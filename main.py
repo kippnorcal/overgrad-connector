@@ -15,6 +15,7 @@ from entities.endpoints import create_endpoint_object
 from entities.endpoints import Endpoint
 from entities.endpoints import CustomField
 from entities.overgrad_api import OvergradAPIPaginator
+from entities.overgrad_api import OvergradAPIFetchRecord
 from utils.config import OVERGRAD_ENDPOINT_CONFIGS
 
 logging.basicConfig(
@@ -121,8 +122,9 @@ def _process_paginated_data(endpoint: Endpoint, api: OvergradAPIPaginator, unive
         if endpoint.nested_fields is not None:
             _process_nested_fields(record, endpoint)
         if endpoint.custom_field is not None:
-            count = _process_custom_fields(record, endpoint)
-            custom_field_count += count
+            count = _process_custom_fields(record, endpoint, cloud_storage)
+            if count is not None:
+                custom_field_count += count
 
         missing_record_fields = [k for k, v in record.items() if k not in endpoint.fields]
         for field in missing_record_fields:
@@ -133,16 +135,39 @@ def _process_paginated_data(endpoint: Endpoint, api: OvergradAPIPaginator, unive
     if custom_field_count > 0:
         logging.info(f"Loaded {custom_field_count} custom field rows from {endpoint.name}")
 
+
+def _process_record_queue(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
+    custom_field_count = 0
+    for record in api.fetch_records(university_id_queue):
+        if endpoint.has_university_id:
+            university_id_queue.add(record.get("university_id"))
+        if endpoint.nested_fields is not None:
+            _process_nested_fields(record, endpoint)
+        if endpoint.custom_field is not None:
+            count = _process_custom_fields(record, endpoint, cloud_storage)
+            custom_field_count += count
+
+        missing_record_fields = [k for k, v in record.items() if k not in endpoint.fields]
+        for field in missing_record_fields:
+            record[field] = None
+        filtered_record = {k: v for k, v in record.items() if k in endpoint.fields}
+        _load_to_cloud_storage(filtered_record, endpoint, cloud_storage)
+    logging.info(f"Loaded {len(university_id_queue)} records from {endpoint.name}")
+    if custom_field_count > 0:
+        logging.info(f"Loaded {custom_field_count} custom field rows from {endpoint.name}")
+
+
 def main():
     university_id_queue = set()
-    e = ["students"]
-    endpoints = [create_endpoint_object(endpoint) for endpoint in OVERGRAD_ENDPOINT_CONFIGS if endpoint["name"] in e]
+    endpoints = [create_endpoint_object(endpoint) for endpoint in OVERGRAD_ENDPOINT_CONFIGS if endpoint["name"]]
     cloud_storage = CloudStorageClient()
 
     for endpoint in endpoints:
         print(f"Loading data from {endpoint.name}")
         if endpoint.name == "universities":
-            pass
+            if len(university_id_queue) > 0:
+                api = OvergradAPIFetchRecord(endpoint.name)
+                _process_record_queue(endpoint, api, university_id_queue, cloud_storage)
         else:
             api = OvergradAPIPaginator(endpoint.name)
             _process_paginated_data(endpoint, api, university_id_queue, cloud_storage)

@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+import logging
 import os
 from time import sleep
-from typing import List
+from typing import Generator
 
 import requests
 from tenacity import retry, wait_fixed, retry_if_exception
@@ -23,7 +24,7 @@ class OvergradAPIBase(ABC):
         return response.json()
 
     @abstractmethod
-    def _generate_url(self):
+    def _generate_url(self, *args, **kwargs):
         pass
 
     @abstractmethod
@@ -70,7 +71,7 @@ class OvergradAPIPaginator(OvergradAPIBase):
         self._total_count = data["total_count"]
         self._total_pages = data["total_pages"]
 
-    def call_endpoint(self):
+    def call_endpoint(self) -> Generator[dict, None, None]:
         while not self._is_complete():
             url = self._generate_url()
             payload = super()._call_endpoint(url)
@@ -80,8 +81,27 @@ class OvergradAPIPaginator(OvergradAPIBase):
                 yield record
             if self._total_count is None:
                 self._update_response_counts(payload)
-
+            logging.info(f"Fetched page {self._current_page} of {self._total_pages}")
             self._increment_page()
-            print(f"Incrementing to page {self._current_page} our of {self._total_pages}")
             sleep(1.1)
 
+
+class OvergradAPIFetchRecord(OvergradAPIBase):
+
+    def __init__(self, endpoint):
+        super().__init__(endpoint)
+
+    def _generate_url(self, record_id: int):
+       return f"{self._base_url}/{record_id}"
+
+    def _set_base_url(self):
+        return f"https://api.overgrad.com/api/v1/{self._endpoint}"
+
+    def fetch_records(self, record_ids: set) -> Generator[dict, None, None]:
+        for record in record_ids:
+            if record is not None:
+                url = self._generate_url(record)
+                payload = super()._call_endpoint(url)
+                yield payload
+            else:
+                logging.info("Found None University ID")
