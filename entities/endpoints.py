@@ -8,7 +8,6 @@ class CustomField:
     gcs_folder: str
     file_name_prefix: str
     fields: set
-    parent_id_key: str
 
 
 @dataclass

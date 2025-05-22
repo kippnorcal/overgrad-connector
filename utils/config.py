@@ -95,7 +95,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "field_name": "custom_field_values",
             "gcs_folder": "student_custom_fieds",
             "file_name_prefix": "student_custom_field_",
-            "parent_id_key": "student_id",
             "fields": {
                 "student_id",
                 "custom_field_id",
@@ -166,7 +165,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "field_name": "custom_field_values",
             "gcs_folder": "admission_custom_fields",
             "file_name_prefix": "admission_custom_field_",
-            "parent_id_key": "admissions_id",
             "fields": {
                 "admission_id",
                 "custom_field_id",
@@ -239,7 +237,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "field_name": "custom_field_options",
             "gcs_folder": "custom_field_options",
             "file_name_prefix": "custom_field_",
-            "parent_id_key": "custom_field_id",
             "fields": {
                 "custom_field_id",
                 "id",

@@ -42,7 +42,7 @@ parser.add_argument(
 def _load_to_cloud_storage(data: Union[dict, list], endpoint: Union[Endpoint, CustomField], cloud_storage: CloudStorageClient) -> None:
     record_id = None
     if isinstance(endpoint, CustomField):
-        record_id = data[0][endpoint.parent_id_key]
+        record_id = data[0]["id"]
     if isinstance(endpoint, Endpoint):
         record_id = data["id"]
 
@@ -74,14 +74,14 @@ def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
             if key == "multiselect":
                 for val in value:
                     flattened.append({
-                        endpoint.custom_field.parent_id_key: parent_id,
+                        "id": parent_id,
                         "custom_field_id": field_id,
                         "value_type": key,
                         "value": val
                     })
             else:
                 flattened.append({
-                    endpoint.custom_field.parent_id_key: parent_id,
+                    "id": parent_id,
                     "custom_field_id": field_id,
                     "value_type": key,
                     "value": value
