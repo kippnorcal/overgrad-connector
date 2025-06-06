@@ -35,7 +35,7 @@ def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
     return flattened
 
 
-def _process_custom_fields(record: dict, endpoint: Endpoint, grad_year):
+def _process_custom_fields(record: dict, endpoint: Endpoint, grad_year: str):
     custom_field_records = _flatten_custom_fields(record, endpoint)
     if custom_field_records:
         filtered_custom_fields = []
@@ -73,7 +73,7 @@ def run_record_processing(endpoint: Endpoint, api: OvergradAPIPaginator, univers
         if endpoint.nested_fields is not None:
             _process_nested_fields(record, endpoint)
         if endpoint.custom_field is not None:
-            count = _process_custom_fields(record, endpoint)
+            count = _process_custom_fields(record, endpoint, grad_year)
             if count is not None:
                 custom_field_count += count
         cleaned_record = helpers.clean_record_fields(record, endpoint)
