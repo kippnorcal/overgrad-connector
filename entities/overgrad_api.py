@@ -2,19 +2,18 @@ from abc import ABC, abstractmethod
 import logging
 import os
 from time import sleep
-from typing import Generator
+from typing import Union, Generator
 
 import requests
 from tenacity import retry, wait_fixed, retry_if_exception
 
 
 class OvergradAPIBase(ABC):
-
     def __init__(self, endpoint):
         self._endpoint = endpoint
+        self._session = requests.Session()
         self._api_key = os.getenv("OVERGRAD_API_KEY")
         self._headers = {"ApiKey": self._api_key}
-        self._session = requests.Session()
         self._base_url = self._set_base_url()
 
     @retry(retry=retry_if_exception(requests.exceptions.ConnectionError), wait=wait_fixed(60))
@@ -33,13 +32,13 @@ class OvergradAPIBase(ABC):
 
 
 class OvergradAPIPaginator(OvergradAPIBase):
-
-    def __init__(self, endpoint, after_date_str = None):
+    def __init__(self, endpoint, graduation_year: Union[str, None] = None, after_date: Union[str, None] = None):
         self._record_count = 0
         self._total_count = None
         self._total_pages = None
         self._current_page = 1
-        self._after_date_str = after_date_str
+        self._graduation_year = graduation_year
+        self._after_date_str = after_date
         super().__init__(endpoint)
 
     def _generate_url(self):
@@ -49,10 +48,13 @@ class OvergradAPIPaginator(OvergradAPIBase):
             return f"{self._base_url}&page={self._current_page}"
 
     def _set_base_url(self):
-        if self._after_date_str:
-            return f"https://api.overgrad.com/api/v1/{self._endpoint}?updated_after={self._after_date_str}&limit=100"
-        else:
-            return f"https://api.overgrad.com/api/v1/{self._endpoint}?limit=100"
+        url = [f"https://api.overgrad.com/api/v1/{self._endpoint}?"]
+        if self._graduation_year is not None:
+            url.append(f"{self._graduation_year}")
+        if self._after_date_str is not None:
+            url.append(f"updated_after={self._after_date_str}")
+        url.append("limit=100")
+        return "".join(url[:1]) + "&".join(url[1:])
 
     @property
     def record_count(self) -> int:
@@ -87,12 +89,11 @@ class OvergradAPIPaginator(OvergradAPIBase):
 
 
 class OvergradAPIFetchRecord(OvergradAPIBase):
-
     def __init__(self, endpoint):
         super().__init__(endpoint)
 
     def _generate_url(self, record_id: int):
-       return f"{self._base_url}/{record_id}"
+        return f"{self._base_url}/{record_id}"
 
     def _set_base_url(self):
         return f"https://api.overgrad.com/api/v1/{self._endpoint}"
