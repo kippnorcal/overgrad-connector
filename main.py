@@ -35,7 +35,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--grad-year",
-    help="Required - Filters date for a specific graduation year; in YYYY format",
+    help="Required - Filters for a specific grad year; in YYYY format. If not paired with --updated-since or "
+         "--recent-updates, all records will be fetched.",
     required=True,
     dest="grad_year",
 )
