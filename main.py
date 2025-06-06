@@ -1,22 +1,23 @@
 import argparse
-from io import BytesIO
-import json
 import logging
-import os
 import sys
 import traceback
 from typing import List
 from typing import Union
+import re
+from datetime import datetime
 
 from job_notifications import create_notifications
-from gbq_connector import CloudStorageClient
+
 
 from entities.endpoints import create_endpoint_object
 from entities.endpoints import Endpoint
-from entities.endpoints import CustomField
 from entities.overgrad_api import OvergradAPIPaginator
 from entities.overgrad_api import OvergradAPIFetchRecord
 from utils.config import OVERGRAD_ENDPOINT_CONFIGS
+from utils import helpers
+from workflows.process_paginated_records import run_record_processing
+
 
 logging.basicConfig(
     handlers=[
@@ -28,149 +29,98 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %I:%M:%S%p %Z",
 )
 
+
 parser = argparse.ArgumentParser(
     description="Accept start and end date for date window"
 )
 parser.add_argument(
-    "--refresh-dbt",
-    help="Refreshes dbt models downstream",
-    dest="dbt_refresh",
+    "--grad-year",
+    help="Required - Filters date for a specific graduation year; in YYYY format",
+    required=True,
+    dest="grad_year",
+)
+parser.add_argument(
+    "--updated-since",
+    help="Date to get updates since; YYYY-MM-DD format",
+    default=None,
+    dest="updated_since",
+)
+parser.add_argument(
+    "--recent-updates",
+    help="Gets last updated date from table; Queries api by that date",
+    dest="recent_updates",
     action="store_true"
 )
+args = parser.parse_args()
 
 
-def _load_to_cloud_storage(data: Union[dict, list], endpoint: Union[Endpoint, CustomField], cloud_storage: CloudStorageClient) -> None:
-    record_id = None
-    if isinstance(endpoint, CustomField):
-        record_id = data[0]["id"]
-    if isinstance(endpoint, Endpoint):
-        record_id = data["id"]
-
-    if isinstance(data, dict):
-        data = [data]
-
-    # Create ndjson file object in memory
-    ndjson_lines = [json.dumps(record) for record in data]
-    ndjson_content = "\n".join(ndjson_lines).encode('utf-8')
-    file_obj = BytesIO(ndjson_content)
-
-    # Load to Google Cloud Storage
-    blob_name = f"overgrad/{endpoint.gcs_folder}/{endpoint.file_name_prefix}_{record_id}.ndjson"
-    bucket = os.getenv("BUCKET")
-    cloud_storage.load_in_memory_file_to_cloud(bucket, blob_name, file_obj)
+def validate_date_format(date_string):
+    pattern = r'^\d{4}-\d{2}-\d{2}$'
+    if not re.match(pattern, date_string):
+        raise ValueError("Date must be in YYYY-MM-DD format")
+    try:
+        # Additional check to ensure the date is valid (e.g., not 2023-02-30)
+        datetime.strptime(date_string, "%Y-%m-%d")
+    except ValueError:
+        raise ValueError("Invalid date")
+    return date_string
 
 
-def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
-    custom_fields = record.pop(endpoint.custom_field.field_name, [])
-    parent_id = record.get("id")
-    flattened = []
-
-    for item in custom_fields:
-        field_id = item["custom_field_id"]
-        for key, value in item.items():
-            if key == "custom_field_id":
-                continue # Do nothing with this
-
-            if key == "multiselect":
-                for val in value:
-                    flattened.append({
-                        "id": parent_id,
-                        "custom_field_id": field_id,
-                        "value_type": key,
-                        "value": val
-                    })
-            else:
-                flattened.append({
-                    "id": parent_id,
-                    "custom_field_id": field_id,
-                    "value_type": key,
-                    "value": value
-                })
-    return flattened
-
-def _process_custom_fields(record: dict, endpoint: Endpoint, cloud_storage: CloudStorageClient):
-    custom_field_records = _flatten_custom_fields(record, endpoint)
-    if custom_field_records:
-        filtered_custom_fields = []
-        for custom_field in custom_field_records:
-            filtered_custom_field = {k: v for k, v in custom_field.items() if k in endpoint.custom_field.fields}
-            filtered_custom_fields.append(filtered_custom_field)
-        _load_to_cloud_storage(filtered_custom_fields, endpoint.custom_field, cloud_storage)
-        return len(filtered_custom_fields)
-
-def _flatten_nested_fields(parent_field_name: str, child_fields: dict) -> dict:
-    flattened_dict = {}
-    for field, value in child_fields.items():
-        flattened_name = f"{parent_field_name}_{field}"
-        flattened_dict[flattened_name] = value
-    return flattened_dict
-
-
-def _process_nested_fields(record: dict, endpoint: Endpoint) -> None:
-    for nested_field in endpoint.nested_fields:
-        child_fields = record.pop(nested_field)
-        if child_fields:
-            flattened_fields = _flatten_nested_fields(nested_field, child_fields)
-            record.update(flattened_fields)
-
-
-def _process_paginated_data(endpoint: Endpoint, api: OvergradAPIPaginator, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
-    custom_field_count = 0
-    for record in api.call_endpoint():
-        if endpoint.has_university_id:
-            university_id_queue.add(record.get("university_id"))
-        if endpoint.nested_fields is not None:
-            _process_nested_fields(record, endpoint)
-        if endpoint.custom_field is not None:
-            count = _process_custom_fields(record, endpoint, cloud_storage)
-            if count is not None:
-                custom_field_count += count
-
-        missing_record_fields = [k for k, v in record.items() if k not in endpoint.fields]
-        for field in missing_record_fields:
-            record[field] = None
-        filtered_record = {k: v for k, v in record.items() if k in endpoint.fields}
-        _load_to_cloud_storage(filtered_record, endpoint, cloud_storage)
-    logging.info(f"Loaded {api.record_count} records from {endpoint.name}")
-    if custom_field_count > 0:
-        logging.info(f"Loaded {custom_field_count} custom field rows from {endpoint.name}")
-
-
-def _process_record_queue(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
-    custom_field_count = 0
+def _process_university_records(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
     for record in api.fetch_records(university_id_queue):
-        if endpoint.has_university_id:
-            university_id_queue.add(record.get("university_id"))
-        if endpoint.nested_fields is not None:
-            _process_nested_fields(record, endpoint)
-        if endpoint.custom_field is not None:
-            count = _process_custom_fields(record, endpoint, cloud_storage)
-            custom_field_count += count
-
-        missing_record_fields = [k for k, v in record.items() if k not in endpoint.fields]
-        for field in missing_record_fields:
-            record[field] = None
-        filtered_record = {k: v for k, v in record.items() if k in endpoint.fields}
-        _load_to_cloud_storage(filtered_record, endpoint, cloud_storage)
+        cleaned_record = helpers.clean_record_fields(record, endpoint)
+        helpers.load_to_cloud_storage(cleaned_record, endpoint)
     logging.info(f"Loaded {len(university_id_queue)} records from {endpoint.name}")
-    if custom_field_count > 0:
-        logging.info(f"Loaded {custom_field_count} custom field rows from {endpoint.name}")
+
+
+def _setup_endpoints() -> List[Endpoint]:
+    """
+    Set up and return list of endpoint objects; adds university to the end of the list as it needs to be processed last
+    once the university_id_queue is populated
+    """
+    university_endpoint = None
+    endpoints = []
+    for endpoint in OVERGRAD_ENDPOINT_CONFIGS:
+        if endpoint["name"] != "universities":
+            endpoints.append(create_endpoint_object(endpoint))
+        else:
+            university_endpoint = create_endpoint_object(endpoint)
+    if university_endpoint is not None:
+        endpoints.append(university_endpoint)
+    return endpoints
 
 
 def main():
     university_id_queue = set()
-    endpoints = [create_endpoint_object(endpoint) for endpoint in OVERGRAD_ENDPOINT_CONFIGS if endpoint["name"]]
-    cloud_storage = CloudStorageClient()
+    endpoints = _setup_endpoints()
 
     for endpoint in endpoints:
-        print(f"Loading data from {endpoint.name}")
+        logging.info(f"Loading data from {endpoint.name}")
         if endpoint.name == "universities":
-            if len(university_id_queue) > 0:
+            if university_id_queue:
+                logging.info(f"Loading {len(university_id_queue)} university IDs from queue.")
                 api = OvergradAPIFetchRecord(endpoint.name)
-                _process_record_queue(endpoint, api, university_id_queue, cloud_storage)
+                _process_university_records(endpoint, api, university_id_queue, cloud_storage)
+            else:
+                logging.info("No university IDs in queue to load.")
         else:
-            api = OvergradAPIPaginator(endpoint.name)
-            _process_paginated_data(endpoint, api, university_id_queue, cloud_storage)
+            if endpoint.has_grad_year:
+                date_filter = None
+                if endpoint.date_filter:
+                    if args.updated_since is not None:
+                        try:
+                            date_filter = validate_date_format(args.updated_since)
+                        except ValueError as e:
+                            logging.error(str(e))
+                            sys.exit(1)
+                    elif args.recent_updates:
+                        #TODO: Create func to get date from DW
+                        pass
+                api = OvergradAPIPaginator(endpoint.name, args.grad_year, date_filter)
+            else:
+                api = OvergradAPIPaginator(endpoint.name)
+            run_record_processing(endpoint, api, university_id_queue, args.grad_year)
+            print(f"Length of University Queue is {len(university_id_queue)}")
 
 
 if __name__ == "__main__":
