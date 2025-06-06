@@ -2,7 +2,9 @@ import logging
 from typing import List
 
 from entities.endpoints import Endpoint
+from entities.overgrad_api import OvergradAPIPaginator
 from utils import helpers
+
 
 def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
     custom_fields = record.pop(endpoint.custom_field.field_name, [])
