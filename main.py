@@ -66,7 +66,7 @@ def validate_date_format(date_string):
     return date_string
 
 
-def _process_university_records(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
+def _process_university_records(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set) -> None:
     for record in api.fetch_records(university_id_queue):
         cleaned_record = helpers.clean_record_fields(record, endpoint)
         helpers.load_to_cloud_storage(cleaned_record, endpoint)
