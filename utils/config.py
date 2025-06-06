@@ -19,18 +19,22 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "name": "schools",
         "gcs_folder": "schools",
         "file_name_prefix": "school_",
+        "has_university_id": False,
+        "date_filter": False,
+        "has_grad_year": False,
         "fields": {
             "id",
             "object",
             "name"
         },
-        "has_university_id": False,
-        "date_filter": False
     },
     {
         "name": "students",
         "gcs_folder": "students",
         "file_name_prefix": "student_",
+        "has_university_id": False,
+        "date_filter": True,
+        "has_grad_year": True,
         "fields": {
             "id",
             "object",
@@ -84,8 +88,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "target_grad_rate",
             "ideal_grad_rate",
         },
-        "has_university_id": False,
-        "date_filter": True,
         "nested_fields": [
             "assigned_counselor",
             "academics",
@@ -96,7 +98,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "gcs_folder": "student_custom_fieds",
             "file_name_prefix": "student_custom_field_",
             "fields": {
-                "student_id",
+                "id",
                 "custom_field_id",
                 "value_type",
                 "value",
@@ -107,6 +109,9 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "name": "admissions",
         "gcs_folder": "admissions",
         "file_name_prefix": "admission_",
+        "has_university_id": True,
+        "date_filter": True,
+        "has_grad_year": True,
         "fields": {
             "id",
             "object",
@@ -153,8 +158,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "award_letter_unmet_need_with_max_family_contribution",
             "award_letter_seog",
         },
-        "has_university_id": True,
-        "date_filter": True,
         "nested_fields": [
             "student",
             "university",
@@ -166,7 +169,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "gcs_folder": "admission_custom_fields",
             "file_name_prefix": "admission_custom_field_",
             "fields": {
-                "admission_id",
+                "id",
                 "custom_field_id",
                 "value_type",
                 "value",
@@ -177,6 +180,9 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "name": "followings",
         "gcs_folder": "followings",
         "file_name_prefix": "following_",
+        "has_university_id": True,
+        "date_filter": True,
+        "has_grad_year": True,
         "fields": {
             "id",
             "object",
@@ -191,8 +197,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "probability_of_acceptance",
             "added_by"
         },
-        "has_university_id": True,
-        "date_filter": True,
         "nested_fields": [
             "student",
             "university"
@@ -202,6 +206,9 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "name": "universities",
         "gcs_folder": "universities",
         "file_name_prefix": "university_",
+        "has_university_id": False,
+        "date_filter": False,
+        "has_grad_year": False,
         "fields": {
             "id",
             "object",
@@ -211,13 +218,14 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "city",
             "state",
         },
-        "has_university_id": False,
-        "date_filter": False
     },
     {
         "name": "custom_fields",
         "gcs_folder": "custom_fields",
         "file_name_prefix": "custom_field_",
+        "has_university_id": False,
+        "date_filter": True,
+        "has_grad_year": False,
         "fields": {
             "id",
             "object",
@@ -231,8 +239,6 @@ OVERGRAD_ENDPOINT_CONFIGS = [
             "student_can_view",
             "student_can_edit",
         },
-        "has_university_id": False,
-        "date_filter": True,
         "custom_field": {
             "field_name": "custom_field_options",
             "gcs_folder": "custom_field_options",
