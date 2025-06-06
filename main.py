@@ -101,7 +101,7 @@ def main():
             if university_id_queue:
                 logging.info(f"Loading {len(university_id_queue)} university IDs from queue.")
                 api = OvergradAPIFetchRecord(endpoint.name)
-                _process_university_records(endpoint, api, university_id_queue, cloud_storage)
+                _process_university_records(endpoint, api, university_id_queue)
             else:
                 logging.info("No university IDs in queue to load.")
         else:
