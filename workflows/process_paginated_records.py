@@ -69,7 +69,10 @@ def run_record_processing(endpoint: Endpoint, api: OvergradAPIPaginator, univers
     custom_field_count = 0
     for record in api.call_endpoint():
         if endpoint.has_university_id:
-            university_id_queue.add(record.get("university_id"))
+            uni_id = record.get("university_id")
+            if uni_id is not None:
+                university_id_queue.add(record.get("university_id"))
+                logging.info(f"Added {uni_id} to university ID queue")
         if endpoint.nested_fields is not None:
             _process_nested_fields(record, endpoint)
         if endpoint.custom_field is not None:
