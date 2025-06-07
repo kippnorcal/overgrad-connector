@@ -123,7 +123,6 @@ def main():
             else:
                 api = OvergradAPIPaginator(endpoint.name)
             run_record_processing(endpoint, api, university_id_queue, args.grad_year)
-            print(f"Length of University Queue is {len(university_id_queue)}")
 
 
 if __name__ == "__main__":
