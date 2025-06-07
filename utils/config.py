@@ -95,7 +95,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         ],
         "custom_field": {
             "field_name": "custom_field_values",
-            "gcs_folder": "student_custom_fieds",
+            "gcs_folder": "student_custom_fields",
             "file_name_prefix": "student_custom_field_",
             "fields": {
                 "id",
