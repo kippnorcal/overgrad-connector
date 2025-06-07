@@ -74,7 +74,6 @@ def run_record_processing(endpoint: Endpoint, api: OvergradAPIPaginator, univers
             uni_id = record.get("university_id")
             if uni_id is not None:
                 university_id_queue.add(record.get("university_id"))
-                logging.info(f"Added {uni_id} to university ID queue")
         if endpoint.custom_field is not None:
             count = _process_custom_fields(record, endpoint, grad_year)
             if count is not None:
