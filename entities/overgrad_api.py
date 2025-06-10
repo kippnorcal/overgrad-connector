@@ -50,7 +50,7 @@ class OvergradAPIPaginator(OvergradAPIBase):
     def _set_base_url(self):
         url = [f"https://api.overgrad.com/api/v1/{self._endpoint}?"]
         if self._graduation_year is not None:
-            url.append(f"{self._graduation_year}")
+            url.append(f"graduation_year={self._graduation_year}")
         if self._after_date_str is not None:
             url.append(f"updated_after={self._after_date_str}")
         url.append("limit=100")
