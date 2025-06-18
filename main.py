@@ -1,14 +1,14 @@
 import argparse
 import logging
+import os
 import sys
 import traceback
 from typing import List
-from typing import Union
 import re
 from datetime import datetime
 
+from gbq_connector import BigQueryClient
 from job_notifications import create_notifications
-
 
 from entities.endpoints import create_endpoint_object
 from entities.endpoints import Endpoint
@@ -55,6 +55,13 @@ parser.add_argument(
 args = parser.parse_args()
 
 
+def get_recent_table_updates_dates() -> dict:
+    dataset = os.getenv("GBQ_DATASET")
+    gbq_client = BigQueryClient()
+    df = gbq_client.get_table_as_df("rpt_kipp_forward__overgrad_automation_last_updated_dates", dataset=dataset)
+    return df.to_dict("records")
+
+
 def validate_date_format(date_string):
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     if not re.match(pattern, date_string):
@@ -96,6 +103,7 @@ def _setup_endpoints() -> List[Endpoint]:
 def main():
     university_id_queue = set()
     endpoints = _setup_endpoints()
+    last_updated_dates = get_recent_table_updates_dates()
 
     for endpoint in endpoints:
         logging.info(f"Loading data from {endpoint.name}")
@@ -117,8 +125,7 @@ def main():
                             logging.error(str(e))
                             sys.exit(1)
                     elif args.recent_updates:
-                        #TODO: Create func to get date from DW
-                        pass
+                        date_filter = last_updated_dates.get(endpoint.name)
                 api = OvergradAPIPaginator(endpoint.name, args.grad_year, date_filter)
             else:
                 api = OvergradAPIPaginator(endpoint.name)
