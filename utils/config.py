@@ -95,8 +95,8 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         ],
         "custom_field": {
             "field_name": "custom_field_values",
-            "gcs_folder": "student_custom_fieds",
-            "file_name_prefix": "student_custom_field_",
+            "gcs_folder": "students_custom_fields",
+            "file_name_prefix": "students_custom_fields_",
             "fields": {
                 "id",
                 "custom_field_id",
@@ -166,8 +166,8 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         ],
         "custom_field": {
             "field_name": "custom_field_values",
-            "gcs_folder": "admission_custom_fields",
-            "file_name_prefix": "admission_custom_field_",
+            "gcs_folder": "admissions_custom_fields",
+            "file_name_prefix": "admissions_custom_fields_",
             "fields": {
                 "id",
                 "custom_field_id",
@@ -242,8 +242,8 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "custom_field": {
             "field_name": "custom_field_options",
             "gcs_folder": "custom_field_options",
-            "file_name_prefix": "custom_field_",
-            "fields": {
+            "file_name_prefix": "custom_field_option_",
+            "fields": [
                 "custom_field_id",
                 "id",
                 "object",
@@ -251,7 +251,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
                 "updated_at",
                 "custom_field_id",
                 "label"
-            }
+            ]
         }
     }
 ]

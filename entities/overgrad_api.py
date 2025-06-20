@@ -50,7 +50,7 @@ class OvergradAPIPaginator(OvergradAPIBase):
     def _set_base_url(self):
         url = [f"https://api.overgrad.com/api/v1/{self._endpoint}?"]
         if self._graduation_year is not None:
-            url.append(f"{self._graduation_year}")
+            url.append(f"graduation_year={self._graduation_year}")
         if self._after_date_str is not None:
             url.append(f"updated_after={self._after_date_str}")
         url.append("limit=100")
@@ -98,11 +98,7 @@ class OvergradAPIFetchRecord(OvergradAPIBase):
     def _set_base_url(self):
         return f"https://api.overgrad.com/api/v1/{self._endpoint}"
 
-    def fetch_records(self, record_ids: set) -> Generator[dict, None, None]:
-        for record in record_ids:
-            if record is not None:
-                url = self._generate_url(record)
-                payload = super()._call_endpoint(url)
-                yield payload
-            else:
-                logging.info("Found None University ID")
+    def fetch_record(self, record_id) -> dict:
+        url = self._generate_url(record_id)
+        payload = super()._call_endpoint(url)
+        return payload

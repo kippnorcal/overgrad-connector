@@ -2,7 +2,9 @@ import logging
 from typing import List
 
 from entities.endpoints import Endpoint
+from entities.overgrad_api import OvergradAPIPaginator
 from utils import helpers
+
 
 def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
     custom_fields = record.pop(endpoint.custom_field.field_name, [])
@@ -24,16 +26,19 @@ def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
                         "value": val
                     })
             else:
-                flattened.append({
-                    "id": parent_id,
-                    "custom_field_id": field_id,
-                    "value_type": key,
-                    "value": value
-                })
+                if endpoint.custom_field.field_name != "custom_field_options":
+                    flattened.append({
+                        "id": parent_id,
+                        "custom_field_id": field_id,
+                        "value_type": key,
+                        "value": value
+                    })
+                else:
+                    flattened.append(item)
     return flattened
 
 
-def _process_custom_fields(record: dict, endpoint: Endpoint, grad_year):
+def _process_custom_fields(record: dict, endpoint: Endpoint, grad_year: str):
     custom_field_records = _flatten_custom_fields(record, endpoint)
     if custom_field_records:
         filtered_custom_fields = []
@@ -66,12 +71,14 @@ def _process_nested_fields(record: dict, endpoint: Endpoint) -> None:
 def run_record_processing(endpoint: Endpoint, api: OvergradAPIPaginator, university_id_queue: set, grad_year: str) -> None:
     custom_field_count = 0
     for record in api.call_endpoint():
-        if endpoint.has_university_id:
-            university_id_queue.add(record.get("university_id"))
         if endpoint.nested_fields is not None:
             _process_nested_fields(record, endpoint)
+        if endpoint.has_university_id:
+            uni_id = record.get("university_id")
+            if uni_id is not None:
+                university_id_queue.add(record.get("university_id"))
         if endpoint.custom_field is not None:
-            count = _process_custom_fields(record, endpoint)
+            count = _process_custom_fields(record, endpoint, grad_year)
             if count is not None:
                 custom_field_count += count
         cleaned_record = helpers.clean_record_fields(record, endpoint)

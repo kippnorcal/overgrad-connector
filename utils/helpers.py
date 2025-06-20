@@ -8,7 +8,9 @@ from gbq_connector import CloudStorageClient
 from entities.endpoints import CustomField
 from entities.endpoints import Endpoint
 
+
 cloud_storage = CloudStorageClient()
+
 
 def clean_record_fields(record, endpoint):
     """Fill out missing expected fields; Filters out unwanted fields"""

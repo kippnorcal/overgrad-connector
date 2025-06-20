@@ -1,14 +1,14 @@
 import argparse
 import logging
+import os
 import sys
 import traceback
 from typing import List
-from typing import Union
 import re
 from datetime import datetime
 
+from gbq_connector import BigQueryClient
 from job_notifications import create_notifications
-
 
 from entities.endpoints import create_endpoint_object
 from entities.endpoints import Endpoint
@@ -35,7 +35,8 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument(
     "--grad-year",
-    help="Required - Filters date for a specific graduation year; in YYYY format",
+    help="Required - Filters for a specific grad year; in YYYY format. If not paired with --updated-since or "
+         "--recent-updates, all records will be fetched.",
     required=True,
     dest="grad_year",
 )
@@ -54,6 +55,16 @@ parser.add_argument(
 args = parser.parse_args()
 
 
+def get_recent_table_updates_dates() -> dict:
+    data_dict = {}
+    dataset = os.getenv("GBQ_DATASET")
+    gbq_client = BigQueryClient()
+    df = gbq_client.get_table_as_df("rpt_kipp_forward__overgrad_automation_last_updated_dates", dataset=dataset)
+    data_list = df.to_dict("records")
+    for data in data_list:
+        data_dict[data["endpoint"]] = data["last_updated_date_string"]
+    return data_dict
+
 def validate_date_format(date_string):
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     if not re.match(pattern, date_string):
@@ -66,9 +77,11 @@ def validate_date_format(date_string):
     return date_string
 
 
-def _process_university_records(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set, cloud_storage: CloudStorageClient) -> None:
-    for record in api.fetch_records(university_id_queue):
-        cleaned_record = helpers.clean_record_fields(record, endpoint)
+def _process_university_records(endpoint: Endpoint, api: OvergradAPIFetchRecord, university_id_queue: set) -> None:
+    for uni_id in university_id_queue:
+        data = api.fetch_record(uni_id)
+        data = data.get("data")
+        cleaned_record = helpers.clean_record_fields(data, endpoint)
         helpers.load_to_cloud_storage(cleaned_record, endpoint)
     logging.info(f"Loaded {len(university_id_queue)} records from {endpoint.name}")
 
@@ -93,6 +106,7 @@ def _setup_endpoints() -> List[Endpoint]:
 def main():
     university_id_queue = set()
     endpoints = _setup_endpoints()
+    last_updated_dates = get_recent_table_updates_dates()
 
     for endpoint in endpoints:
         logging.info(f"Loading data from {endpoint.name}")
@@ -100,7 +114,7 @@ def main():
             if university_id_queue:
                 logging.info(f"Loading {len(university_id_queue)} university IDs from queue.")
                 api = OvergradAPIFetchRecord(endpoint.name)
-                _process_university_records(endpoint, api, university_id_queue, cloud_storage)
+                _process_university_records(endpoint, api, university_id_queue)
             else:
                 logging.info("No university IDs in queue to load.")
         else:
@@ -114,13 +128,11 @@ def main():
                             logging.error(str(e))
                             sys.exit(1)
                     elif args.recent_updates:
-                        #TODO: Create func to get date from DW
-                        pass
+                        date_filter = last_updated_dates.get(endpoint.name)
                 api = OvergradAPIPaginator(endpoint.name, args.grad_year, date_filter)
             else:
                 api = OvergradAPIPaginator(endpoint.name)
             run_record_processing(endpoint, api, university_id_queue, args.grad_year)
-            print(f"Length of University Queue is {len(university_id_queue)}")
 
 
 if __name__ == "__main__":
