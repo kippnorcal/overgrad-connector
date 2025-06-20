@@ -41,6 +41,12 @@ parser.add_argument(
     dest="grad_year",
 )
 parser.add_argument(
+    "--delete-records",
+    help="Identifies records in DW that no longer exist in API and deletes them",
+    dest="delete_records",
+    action="store_true"
+)
+parser.add_argument(
     "--updated-since",
     help="Date to get updates since; YYYY-MM-DD format",
     default=None,
@@ -103,10 +109,11 @@ def _setup_endpoints() -> List[Endpoint]:
     return endpoints
 
 
-def main():
+def record_updates(endpoints: List[Endpoint]):
     university_id_queue = set()
-    endpoints = _setup_endpoints()
-    last_updated_dates = get_recent_table_updates_dates()
+
+    if args.recent_updates:
+        last_updated_dates = get_recent_table_updates_dates()
 
     for endpoint in endpoints:
         logging.info(f"Loading data from {endpoint.name}")
@@ -133,6 +140,15 @@ def main():
             else:
                 api = OvergradAPIPaginator(endpoint.name)
             run_record_processing(endpoint, api, university_id_queue, args.grad_year)
+
+
+def main():
+    endpoints = _setup_endpoints()
+
+    if args.delete_records:
+        pass
+    else:
+        record_updates(endpoints)
 
 
 if __name__ == "__main__":
