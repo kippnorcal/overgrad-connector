@@ -26,12 +26,15 @@ def _flatten_custom_fields(record: dict, endpoint: Endpoint) -> List[dict]:
                         "value": val
                     })
             else:
-                flattened.append({
-                    "id": parent_id,
-                    "custom_field_id": field_id,
-                    "value_type": key,
-                    "value": value
-                })
+                if endpoint.custom_field.field_name != "custom_field_options":
+                    flattened.append({
+                        "id": parent_id,
+                        "custom_field_id": field_id,
+                        "value_type": key,
+                        "value": value
+                    })
+                else:
+                    flattened.append(item)
     return flattened
 
 
