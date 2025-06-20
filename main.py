@@ -56,11 +56,14 @@ args = parser.parse_args()
 
 
 def get_recent_table_updates_dates() -> dict:
+    data_dict = {}
     dataset = os.getenv("GBQ_DATASET")
     gbq_client = BigQueryClient()
     df = gbq_client.get_table_as_df("rpt_kipp_forward__overgrad_automation_last_updated_dates", dataset=dataset)
-    return df.to_dict("records")
-
+    data_list = df.to_dict("records")
+    for data in data_list:
+        data_dict[data["endpoint"]] = data["last_updated_date_string"]
+    return data_dict
 
 def validate_date_format(date_string):
     pattern = r'^\d{4}-\d{2}-\d{2}$'
