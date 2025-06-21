@@ -16,6 +16,7 @@ from entities.overgrad_api import OvergradAPIPaginator
 from entities.overgrad_api import OvergradAPIFetchRecord
 from utils.config import OVERGRAD_ENDPOINT_CONFIGS
 from utils import helpers
+from workflows.delete_records import run_delete_records_workflow
 from workflows.process_paginated_records import run_record_processing
 
 
@@ -60,6 +61,11 @@ parser.add_argument(
     action="store_true"
 )
 args = parser.parse_args()
+
+
+def _delete_records() -> None:
+    api = OvergradAPIPaginator("students", args.grad_year)
+    run_delete_records_workflow(api, args.grad_year)
 
 
 def _get_recent_table_updates_dates() -> dict:
@@ -144,11 +150,10 @@ def _record_updates(endpoints: List[Endpoint]):
 
 
 def main():
-    endpoints = _setup_endpoints()
-
     if args.delete_records:
-        pass
+        _delete_records()
     else:
+        endpoints = _setup_endpoints()
         _record_updates(endpoints)
 
 
