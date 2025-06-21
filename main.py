@@ -48,20 +48,21 @@ parser.add_argument(
 )
 parser.add_argument(
     "--updated-since",
-    help="Date to get updates since; YYYY-MM-DD format",
+    help="Date to get updates since; YYYY-MM-DD format; Will not run if the --delete-records arg is also used",
     default=None,
     dest="updated_since",
 )
 parser.add_argument(
     "--recent-updates",
-    help="Gets last updated date from table; Queries api by that date",
+    help="Gets last updated date from table; Queries api by that date; Will not run if the --delete-records arg "
+         "is also used",
     dest="recent_updates",
     action="store_true"
 )
 args = parser.parse_args()
 
 
-def get_recent_table_updates_dates() -> dict:
+def _get_recent_table_updates_dates() -> dict:
     data_dict = {}
     dataset = os.getenv("GBQ_DATASET")
     gbq_client = BigQueryClient()
@@ -71,7 +72,7 @@ def get_recent_table_updates_dates() -> dict:
         data_dict[data["endpoint"]] = data["last_updated_date_string"]
     return data_dict
 
-def validate_date_format(date_string):
+def _validate_date_format(date_string):
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     if not re.match(pattern, date_string):
         raise ValueError("Date must be in YYYY-MM-DD format")
@@ -109,11 +110,11 @@ def _setup_endpoints() -> List[Endpoint]:
     return endpoints
 
 
-def record_updates(endpoints: List[Endpoint]):
+def _record_updates(endpoints: List[Endpoint]):
     university_id_queue = set()
 
     if args.recent_updates:
-        last_updated_dates = get_recent_table_updates_dates()
+        last_updated_dates = _get_recent_table_updates_dates()
 
     for endpoint in endpoints:
         logging.info(f"Loading data from {endpoint.name}")
@@ -130,7 +131,7 @@ def record_updates(endpoints: List[Endpoint]):
                 if endpoint.date_filter:
                     if args.updated_since is not None:
                         try:
-                            date_filter = validate_date_format(args.updated_since)
+                            date_filter = _validate_date_format(args.updated_since)
                         except ValueError as e:
                             logging.error(str(e))
                             sys.exit(1)
@@ -148,7 +149,7 @@ def main():
     if args.delete_records:
         pass
     else:
-        record_updates(endpoints)
+        _record_updates(endpoints)
 
 
 if __name__ == "__main__":
