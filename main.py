@@ -20,6 +20,9 @@ from workflows.delete_records import run_delete_records_workflow
 from workflows.process_paginated_records import run_record_processing
 
 
+notifications = create_notifications("overgrad-connector", "mailgun", logs="app.log")
+
+
 logging.basicConfig(
     handlers=[
         logging.FileHandler(filename="app.log", mode="w+"),
@@ -150,7 +153,9 @@ def _record_updates(endpoints: List[Endpoint]):
 
 
 def main():
+    notifications.extend_job_name(f" - {args.grad_year}")
     if args.delete_records:
+        notifications.extend_job_name(" - delete records")
         _delete_records()
     else:
         endpoints = _setup_endpoints()
@@ -158,7 +163,6 @@ def main():
 
 
 if __name__ == "__main__":
-    notifications = create_notifications("overgrad-connector", "mailgun", logs="app.log")
     try:
         main()
         notifications.notify()
