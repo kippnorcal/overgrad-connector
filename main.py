@@ -16,7 +16,11 @@ from entities.overgrad_api import OvergradAPIPaginator
 from entities.overgrad_api import OvergradAPIFetchRecord
 from utils.config import OVERGRAD_ENDPOINT_CONFIGS
 from utils import helpers
+from workflows.delete_records import run_delete_records_workflow
 from workflows.process_paginated_records import run_record_processing
+
+
+notifications = create_notifications("overgrad-connector", "mailgun", logs="app.log")
 
 
 logging.basicConfig(
@@ -41,21 +45,33 @@ parser.add_argument(
     dest="grad_year",
 )
 parser.add_argument(
+    "--delete-records",
+    help="Identifies records in DW that no longer exist in API and deletes them",
+    dest="delete_records",
+    action="store_true"
+)
+parser.add_argument(
     "--updated-since",
-    help="Date to get updates since; YYYY-MM-DD format",
+    help="Date to get updates since; YYYY-MM-DD format; Will not run if the --delete-records arg is also used",
     default=None,
     dest="updated_since",
 )
 parser.add_argument(
     "--recent-updates",
-    help="Gets last updated date from table; Queries api by that date",
+    help="Gets last updated date from table; Queries api by that date; Will not run if the --delete-records arg "
+         "is also used",
     dest="recent_updates",
     action="store_true"
 )
 args = parser.parse_args()
 
 
-def get_recent_table_updates_dates() -> dict:
+def _delete_records() -> None:
+    api = OvergradAPIPaginator("students", args.grad_year)
+    run_delete_records_workflow(api, args.grad_year)
+
+
+def _get_recent_table_updates_dates() -> dict:
     data_dict = {}
     dataset = os.getenv("GBQ_DATASET")
     gbq_client = BigQueryClient()
@@ -65,7 +81,7 @@ def get_recent_table_updates_dates() -> dict:
         data_dict[data["endpoint"]] = data["last_updated_date_string"]
     return data_dict
 
-def validate_date_format(date_string):
+def _validate_date_format(date_string):
     pattern = r'^\d{4}-\d{2}-\d{2}$'
     if not re.match(pattern, date_string):
         raise ValueError("Date must be in YYYY-MM-DD format")
@@ -103,10 +119,11 @@ def _setup_endpoints() -> List[Endpoint]:
     return endpoints
 
 
-def main():
+def _record_updates(endpoints: List[Endpoint]):
     university_id_queue = set()
-    endpoints = _setup_endpoints()
-    last_updated_dates = get_recent_table_updates_dates()
+
+    if args.recent_updates:
+        last_updated_dates = _get_recent_table_updates_dates()
 
     for endpoint in endpoints:
         logging.info(f"Loading data from {endpoint.name}")
@@ -123,7 +140,7 @@ def main():
                 if endpoint.date_filter:
                     if args.updated_since is not None:
                         try:
-                            date_filter = validate_date_format(args.updated_since)
+                            date_filter = _validate_date_format(args.updated_since)
                         except ValueError as e:
                             logging.error(str(e))
                             sys.exit(1)
@@ -135,8 +152,17 @@ def main():
             run_record_processing(endpoint, api, university_id_queue, args.grad_year)
 
 
+def main():
+    notifications.extend_job_name(f" - {args.grad_year}")
+    if args.delete_records:
+        notifications.extend_job_name(" - delete records")
+        _delete_records()
+    else:
+        endpoints = _setup_endpoints()
+        _record_updates(endpoints)
+
+
 if __name__ == "__main__":
-    notifications = create_notifications("overgrad-connector", "mailgun", logs="app.log")
     try:
         main()
         notifications.notify()
