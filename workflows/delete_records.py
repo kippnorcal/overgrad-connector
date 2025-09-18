@@ -2,6 +2,7 @@ import logging
 import os
 from typing import Union
 
+from entities.endpoints import Endpoint
 from entities.record_delete_dataclass import DeleteRecord
 from entities.overgrad_api import OvergradAPIPaginator
 
@@ -80,7 +81,7 @@ def _find_student_followings(record: DeleteRecord):
         record.following_ids = result
 
 
-def run_delete_records_workflow(api: OvergradAPIPaginator, grad_year: str) -> None:
+def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str) -> None:
     # get records from DW
     dw_student_ids = _get_dw_student_ids(grad_year)
     if dw_student_ids is not None:

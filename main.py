@@ -63,12 +63,15 @@ parser.add_argument(
     dest="recent_updates",
     action="store_true"
 )
+
 args = parser.parse_args()
 
 
-def _delete_records() -> None:
-    api = OvergradAPIPaginator("students", args.grad_year)
-    run_delete_records_workflow(api, args.grad_year)
+def _delete_records(endpoints: List[Endpoint]) -> None:
+    for endpoint in endpoints:
+        if endpoint.name in ["students", "admissions", "followings"]:
+            api = OvergradAPIPaginator(endpoint.name, args.grad_year)
+            run_delete_records_workflow(api, endpoint, args.grad_year)
 
 
 def _get_recent_table_updates_dates() -> dict:
@@ -154,11 +157,11 @@ def _record_updates(endpoints: List[Endpoint]):
 
 def main():
     notifications.extend_job_name(f" - {args.grad_year}")
+    endpoints = _setup_endpoints()
     if args.delete_records:
         notifications.extend_job_name(" - delete records")
-        _delete_records()
+        _delete_records(endpoints)
     else:
-        endpoints = _setup_endpoints()
         _record_updates(endpoints)
 
 
