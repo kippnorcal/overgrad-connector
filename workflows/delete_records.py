@@ -32,6 +32,7 @@ def _delete_admissions_records(record: DeleteRecord, year):
     else:
         logging.info(f"No admissions records to delete")
 
+
 def _delete_followings_records(record: DeleteRecord, year):
     if record.following_ids:
         for r in record.following_ids:
@@ -62,24 +63,22 @@ def _get_dw_student_ids(year: str) -> Union[set, None]:
     else:
         return None
 
-# admissions
-# SELECT * FROM `kae-cloud-kippnorcal.norcal_analytics.stg_og__admissions` where overgrad_student_id = 999999
 
 def _find_student_admissions(record: DeleteRecord):
-    # SELECT * FROM `kae-cloud-kippnorcal.norcal_analytics.stg_og__followings` where overgrad_student_id = 999999
     query = f"SELECT overgrad_application_id FROM `{project}.{dataset}.stg_og__admissions` where overgrad_student_id = {record.student_id}"
     df = gbq.query(query)
     if df is not None:
         result = df["overgrad_application_id"].to_list()
         record.admission_ids = result
 
+
 def _find_student_followings(record: DeleteRecord):
-    # SELECT * FROM `kae-cloud-kippnorcal.norcal_analytics.stg_og__followings` where overgrad_student_id = 999999
     query = f"SELECT overgrad_following_id FROM `{project}.{dataset}.stg_og__followings` where overgrad_student_id = {record.student_id}"
     df = gbq.query(query)
     if df is not None:
         result = df["overgrad_following_id"].to_list()
         record.following_ids = result
+
 
 def run_delete_records_workflow(api: OvergradAPIPaginator, grad_year: str) -> None:
     # get records from DW
