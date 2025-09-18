@@ -3,7 +3,6 @@ import os
 from typing import Union
 
 from entities.endpoints import Endpoint
-from entities.record_delete_dataclass import DeleteRecord
 from entities.overgrad_api import OvergradAPIPaginator
 
 from gbq_connector import BigQueryClient
