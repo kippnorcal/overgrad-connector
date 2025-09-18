@@ -18,22 +18,6 @@ dataset = os.getenv("GBQ_DATASET")
 project = os.getenv("GBQ_PROJECT")
 
 
-def _delete_admissions_records(record: DeleteRecord, year):
-    if record.admission_ids:
-        for r in record.admission_ids:
-            admission_record_path = f"overgrad/admissions/{year}/admission__{r}.ndjson"
-            cloud_storage.delete_file(bucket, admission_record_path)
-            try:
-                admission_custom_field_record_path = f"overgrad/admissions_custom_fields/{year}/admissions_custom_fields__{r}.ndjson"
-                cloud_storage.delete_file(bucket, admission_custom_field_record_path)
-            except NotFound:
-                # If there are no custom field records, do nothing
-                pass
-        logging.info(f"Deleted {len(record.admission_ids)} admission record(s) and their custom fields")
-    else:
-        logging.info(f"No admissions records to delete")
-
-
 def _delete_record(endpoint: Endpoint, record_id: str, year: str):
     record_path = f"overgrad/{endpoint.gcs_folder}/{year}/{endpoint.file_name_prefix}_{record_id}.ndjson"
     cloud_storage.delete_file(bucket, record_path)
@@ -59,47 +43,42 @@ def _get_dw_student_ids(year: str) -> Union[set, None]:
         return None
 
 
-def _find_student_admissions(record: DeleteRecord):
-    query = f"SELECT overgrad_application_id FROM `{project}.{dataset}.stg_og__admissions` where overgrad_student_id = {record.student_id}"
+def _get_dw_non_student_ids(endpoint: Endpoint, grad_year: str) -> Union[set, None]:
+    id_field = "overgrad_application_id" if endpoint.name == "admissions" else "overgrad_following_id"
+    query = f"""
+        SELECT {id_field} FROM `{project}.{dataset}.stg_og__{endpoint.name}` as data
+        LEFT JOIN `{project}.{dataset}.stg_og__students` as students
+        on data.overgrad_student_id = students.overgrad_student_id
+        where students.graduation_year = {grad_year}
+        """
     df = gbq.query(query)
     if df is not None:
-        result = df["overgrad_application_id"].to_list()
-        record.admission_ids = result
-
-
-def _find_student_followings(record: DeleteRecord):
-    query = f"SELECT overgrad_following_id FROM `{project}.{dataset}.stg_og__followings` where overgrad_student_id = {record.student_id}"
-    df = gbq.query(query)
-    if df is not None:
-        result = df["overgrad_following_id"].to_list()
-        record.following_ids = result
+        return set(str(x) for x in df[id_field].to_list())
+    else:
+        return None
 
 
 def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str) -> None:
-    # get records from DW
-    dw_student_ids = _get_dw_student_ids(grad_year)
-    if dw_student_ids is not None:
-        api_student_ids = set()
+
+    logging.info(f"Running deletion workflow for {endpoint.name}")
+
+    ids_from_dw = None
+    if endpoint.name == "students":
+        ids_from_dw = _get_dw_student_ids(grad_year)
+    else:
+        ids_from_dw = _get_dw_non_student_ids(endpoint, grad_year)
+
+    if ids_from_dw is not None:
+        ids_from_api = set()
         for record in api.call_endpoint():
-            api_student_ids.add(str(record["id"]))
+            ids_from_api.add(str(record["id"]))
 
-        missing_student_ids = list(dw_student_ids - api_student_ids)
-        delete_records_obj = []
+        missing_ids = list(ids_from_dw - ids_from_api)
 
-        if missing_student_ids:
-            logging.info(f"Found {len(missing_student_ids)} record(s) to delete")
-            for sid in missing_student_ids:
-                delete_records_obj.append(DeleteRecord(student_id=sid))
-
-        if delete_records_obj:
-            for record in delete_records_obj:
-                _find_student_admissions(record)
-                _find_student_followings(record)
-                logging.info(f"Deleting student ID {record.student_id} and its associated records")
-                _delete_student_records(record, grad_year)
-                _delete_admissions_records(record, grad_year)
-                _delete_followings_records(record, grad_year)
+        if missing_ids:
+            logging.info(f"Found {len(missing_ids)} record(s) to delete")
+            for record in missing_ids:
+                logging.info(f"Deleting {record}")
+                _delete_record(endpoint, record, grad_year)
         else:
             logging.info("No records to delete")
-    else:
-        logging.info(f"No records for grad year {grad_year}")
