@@ -34,26 +34,20 @@ def _delete_admissions_records(record: DeleteRecord, year):
         logging.info(f"No admissions records to delete")
 
 
-def _delete_followings_records(record: DeleteRecord, year):
-    if record.following_ids:
-        for r in record.following_ids:
-            followings_record_path = f"overgrad/followings/{year}/following__{r}.ndjson"
-            cloud_storage.delete_file(bucket, followings_record_path)
-        logging.info(f"Deleted {len(record.following_ids)} followings record(s)")
+def _delete_record(endpoint: Endpoint, record_id: str, year: str):
+    record_path = f"overgrad/{endpoint.gcs_folder}/{year}/{endpoint.file_name_prefix}_{record_id}.ndjson"
+    cloud_storage.delete_file(bucket, record_path)
+    custom_fields = endpoint.custom_field
+    if custom_fields is not None:
+        try:
+            custom_field_record_path = f"overgrad/{custom_fields.gcs_folder}/{year}/{custom_fields.file_name_prefix}_{record_id}.ndjson"
+            cloud_storage.delete_file(bucket, custom_field_record_path)
+            logging.info(f"Deleted {endpoint.name} record and custom fields")
+        except NotFound:
+            # If there are no custom field records, do nothing
+            logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
     else:
-        logging.info(f"No followings records to delete")
-
-
-def _delete_student_records(record: DeleteRecord, year):
-    student_record_path = f"overgrad/students/{year}/student__{record.student_id}.ndjson"
-    cloud_storage.delete_file(bucket, student_record_path)
-    try:
-        student_custom_field_record_path = f"overgrad/students_custom_fields/{year}/students_custom_fields__{record.student_id}.ndjson"
-        cloud_storage.delete_file(bucket, student_custom_field_record_path)
-        logging.info(f"Deleted student record and custom fields")
-    except NotFound:
-        # If there are no custom field records, do nothing
-        logging.info(f"Deleted student record; No custom fields were found")
+        logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
 
 
 def _get_dw_student_ids(year: str) -> Union[set, None]:
