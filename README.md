@@ -5,12 +5,13 @@ A pipeline that loads data from the Overgrad platform into Google Cloud Storage.
 - Python3
 - Pipenv
 - Docker
+- Google BigQuery
 - Google Cloud Storage
-- Mail Gun
+- MailGun
 
 ## Setup
 
-Clone the repo from Github:
+Clone the repo from GitHub:
 
 `git clone https://github.com/kippnorcal/overgrad-connector.git`
 
