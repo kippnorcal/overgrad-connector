@@ -48,3 +48,32 @@ Run the following command from the repo's root dir:
 
 ## Running the Job
 
+### Runtime Arguments
+
+| Flags              | Actions                                                                                                                                                                                                     |
+|--------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `--grad-year`      | REQUIRED - provide a year in a YYYY format; example 2026                                                                                                                                                    |
+| `--recent-updates` | This is the default workflow and it's argument is not needed. It exists to make commands more explicit. This workflow fetches updated records since the most recent updated timestamp in the data warehouse |
+| `--delete-records` | This worklow will compare all of the records in the Overgrad API with the records in the data warehouse; Any records in the data warehouse that is not in the API will be deleted.                          |
+| `--updated-since`  | This workflow will look for updates from a specific date. Date must be entered in a YYYY-MM-DD format; example 2026-01-22                                                                                   |
+
+### Example Run Commands
+
+Running the job requires that the `--grad-year` argument is included.
+
+```
+docker run --rm -t overgrad-connector --grad-year 2026
+```
+
+Without any other arguments, the automation runs the `--recent-updates` workflow by default. Since we schedule many different runs of the overgrad-connector, the `--recent-updates` argument exists to make the command more explicit if desired. To run either of the other workflows, just use their flag instead:
+
+```
+docker run --rm -t overgrad-connector --grad-year 2026 --updated-since 2026-01-22
+```
+
+or
+
+```
+docker run --rm -t overgrad-connector --grad-year 2026 --delete-records
+```
+
