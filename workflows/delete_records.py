@@ -19,7 +19,12 @@ project = os.getenv("GBQ_PROJECT")
 
 def _delete_record(endpoint: Endpoint, record_id: str, year: str):
     record_path = f"overgrad/{endpoint.gcs_folder}/{year}/{endpoint.file_name_prefix}_{record_id}.ndjson"
-    cloud_storage.delete_file(bucket, record_path)
+    try:
+        cloud_storage.delete_file(bucket, record_path)
+        logging.info(f"Deleted {endpoint.name} record {endpoint.file_name_prefix}_{record_id}.ndjson")
+    except NotFound:
+        # Record file may already be gone (e.g. deleted in a prior run before the DW refreshed)
+        logging.warning(f"{record_path} not found in GCS; skipping deletion")
     custom_fields = endpoint.custom_field
     if custom_fields is not None:
         try:
@@ -28,9 +33,9 @@ def _delete_record(endpoint: Endpoint, record_id: str, year: str):
             logging.info(f"Deleted {endpoint.name} record and custom fields")
         except NotFound:
             # If there are no custom field records, do nothing
-            logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
+            logging.warning(f"Deleted {record_path}; Custom fields were identified for this record, but were not able to be deleted")
     else:
-        logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
+        logging.info(f"Deleted {record_path} record; No custom fields were found")
 
 
 def _get_dw_student_ids(year: str) -> Union[set, None]:
