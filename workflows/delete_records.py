@@ -19,7 +19,12 @@ project = os.getenv("GBQ_PROJECT")
 
 def _delete_record(endpoint: Endpoint, record_id: str, year: str):
     record_path = f"overgrad/{endpoint.gcs_folder}/{year}/{endpoint.file_name_prefix}_{record_id}.ndjson"
-    cloud_storage.delete_file(bucket, record_path)
+    try:
+        cloud_storage.delete_file(bucket, record_path)
+        logging.info(f"Deleted {endpoint.name} record {endpoint.file_name_prefix}_{record_id}.ndjson")
+    except NotFound:
+        # Record file may already be gone (e.g. deleted in a prior run before the DW refreshed)
+        logging.warning(f"{record_path} not found in GCS; skipping deletion")
     custom_fields = endpoint.custom_field
     if custom_fields is not None:
         try:
@@ -28,9 +33,9 @@ def _delete_record(endpoint: Endpoint, record_id: str, year: str):
             logging.info(f"Deleted {endpoint.name} record and custom fields")
         except NotFound:
             # If there are no custom field records, do nothing
-            logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
+            logging.warning(f"Deleted {record_path}; Custom fields were identified for this record, but were not able to be deleted")
     else:
-        logging.info(f"Deleted {endpoint.name} record; No custom fields were found")
+        logging.info(f"Deleted {record_path} record; No custom fields were found")
 
 
 def _get_dw_student_ids(year: str) -> Union[set, None]:
@@ -57,7 +62,7 @@ def _get_dw_non_student_ids(endpoint: Endpoint, grad_year: str) -> Union[set, No
         return None
 
 
-def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str) -> None:
+def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str, max_delete_pct: float) -> None:
 
     logging.info(f"Running deletion workflow for {endpoint.name}")
 
@@ -75,6 +80,13 @@ def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, g
         missing_ids = list(ids_from_dw - ids_from_api)
 
         if missing_ids:
+            delete_pct = len(missing_ids) / len(ids_from_dw) * 100
+            if delete_pct > max_delete_pct:
+                raise RuntimeError(
+                    f"Aborting {endpoint.name} deletion: {len(missing_ids)} of {len(ids_from_dw)} DW records "
+                    f"({delete_pct:.1f}%) are missing from the API, exceeding the {max_delete_pct}% threshold. "
+                    f"Re-run with a higher --max-delete-pct if this is expected."
+                )
             logging.info(f"Found {len(missing_ids)} record(s) to delete")
             for record in missing_ids:
                 logging.info(f"Deleting {record}")

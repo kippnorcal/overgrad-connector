@@ -63,6 +63,14 @@ parser.add_argument(
     dest="recent_updates",
     action="store_true"
 )
+parser.add_argument(
+    "--max-delete-pct",
+    help="Only used with --delete-records. Aborts deletion for an endpoint if more than this percent of its "
+         "DW records would be deleted; default 10",
+    type=float,
+    default=10.0,
+    dest="max_delete_pct",
+)
 
 args = parser.parse_args()
 
@@ -71,7 +79,7 @@ def _delete_records(endpoints: List[Endpoint]) -> None:
     for endpoint in endpoints:
         if endpoint.name in ["students", "admissions", "followings"]:
             api = OvergradAPIPaginator(endpoint.name, args.grad_year)
-            run_delete_records_workflow(api, endpoint, args.grad_year)
+            run_delete_records_workflow(api, endpoint, args.grad_year, args.max_delete_pct)
 
 
 def _get_recent_table_updates_dates() -> dict:
