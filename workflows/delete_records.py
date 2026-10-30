@@ -62,7 +62,7 @@ def _get_dw_non_student_ids(endpoint: Endpoint, grad_year: str) -> Union[set, No
         return None
 
 
-def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str) -> None:
+def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, grad_year: str, max_delete_pct: float) -> None:
 
     logging.info(f"Running deletion workflow for {endpoint.name}")
 
@@ -80,6 +80,13 @@ def run_delete_records_workflow(api: OvergradAPIPaginator, endpoint: Endpoint, g
         missing_ids = list(ids_from_dw - ids_from_api)
 
         if missing_ids:
+            delete_pct = len(missing_ids) / len(ids_from_dw) * 100
+            if delete_pct > max_delete_pct:
+                raise RuntimeError(
+                    f"Aborting {endpoint.name} deletion: {len(missing_ids)} of {len(ids_from_dw)} DW records "
+                    f"({delete_pct:.1f}%) are missing from the API, exceeding the {max_delete_pct}% threshold. "
+                    f"Re-run with a higher --max-delete-pct if this is expected."
+                )
             logging.info(f"Found {len(missing_ids)} record(s) to delete")
             for record in missing_ids:
                 logging.info(f"Deleting {record}")

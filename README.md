@@ -56,6 +56,7 @@ Run the following command from the repo's root dir:
 | `--recent-updates` | This is the default workflow and it's argument is not needed. It exists to make commands more explicit. This workflow fetches updated records since the most recent updated timestamp in the data warehouse |
 | `--delete-records` | This worklow will compare all of the records in the Overgrad API with the records in the data warehouse; Any records in the data warehouse that is not in the API will be deleted.                          |
 | `--updated-since`  | This workflow will look for updates from a specific date. Date must be entered in a YYYY-MM-DD format; example 2026-01-22                                                                                   |
+| `--max-delete-pct` | Optional; only used with `--delete-records`. If more than this percent of an endpoint's data warehouse records would be deleted, the job aborts without deleting anything. Defaults to 10.                 |
 
 ### Example Run Commands
 
@@ -75,5 +76,11 @@ or
 
 ```
 docker run --rm -t overgrad-connector --grad-year 2026 --delete-records
+```
+
+If a deletion run aborts because it exceeded the threshold and the deletions are expected, re-run with a higher `--max-delete-pct`:
+
+```
+docker run --rm -t overgrad-connector --grad-year 2026 --delete-records --max-delete-pct 50
 ```
 
