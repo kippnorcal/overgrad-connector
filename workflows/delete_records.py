@@ -6,7 +6,7 @@ from entities.endpoints import Endpoint
 from entities.overgrad_api import OvergradAPIPaginator
 
 from gbq_connector import BigQueryClient
-from gbq_connector import CloudFileNotFoundError
+from gbq_connector.excpetions import CloudFileNotFoundError
 from gbq_connector import CloudStorageClient
 
 gbq = BigQueryClient()
