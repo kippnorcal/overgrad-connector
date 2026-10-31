@@ -6,8 +6,8 @@ from entities.endpoints import Endpoint
 from entities.overgrad_api import OvergradAPIPaginator
 
 from gbq_connector import BigQueryClient
+from gbq_connector import CloudFileNotFoundError
 from gbq_connector import CloudStorageClient
-from google.api_core.exceptions import NotFound
 
 gbq = BigQueryClient()
 cloud_storage = CloudStorageClient()
@@ -22,7 +22,7 @@ def _delete_record(endpoint: Endpoint, record_id: str, year: str):
     try:
         cloud_storage.delete_file(bucket, record_path)
         logging.info(f"Deleted {endpoint.name} record {endpoint.file_name_prefix}_{record_id}.ndjson")
-    except NotFound:
+    except CloudFileNotFoundError:
         # Record file may already be gone (e.g. deleted in a prior run before the DW refreshed)
         logging.warning(f"{record_path} not found in GCS; skipping deletion")
     custom_fields = endpoint.custom_field
@@ -31,7 +31,7 @@ def _delete_record(endpoint: Endpoint, record_id: str, year: str):
             custom_field_record_path = f"overgrad/{custom_fields.gcs_folder}/{year}/{custom_fields.file_name_prefix}_{record_id}.ndjson"
             cloud_storage.delete_file(bucket, custom_field_record_path)
             logging.info(f"Deleted {endpoint.name} record and custom fields")
-        except NotFound:
+        except CloudFileNotFoundError:
             # If there are no custom field records, do nothing
             logging.warning(f"Deleted {record_path}; Custom fields were identified for this record, but were not able to be deleted")
     else:
