@@ -18,7 +18,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "schools",
         "gcs_folder": "schools",
-        "file_name_prefix": "school_",
+        "file_name_prefix": "school",
         "has_university_id": False,
         "date_filter": False,
         "has_grad_year": False,
@@ -31,7 +31,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "students",
         "gcs_folder": "students",
-        "file_name_prefix": "student_",
+        "file_name_prefix": "student",
         "has_university_id": False,
         "date_filter": True,
         "has_grad_year": True,
@@ -96,7 +96,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "custom_field": {
             "field_name": "custom_field_values",
             "gcs_folder": "students_custom_fields",
-            "file_name_prefix": "students_custom_fields_",
+            "file_name_prefix": "students_custom_fields",
             "fields": {
                 "id",
                 "custom_field_id",
@@ -108,7 +108,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "admissions",
         "gcs_folder": "admissions",
-        "file_name_prefix": "admission_",
+        "file_name_prefix": "admission",
         "has_university_id": True,
         "date_filter": True,
         "has_grad_year": True,
@@ -167,7 +167,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "custom_field": {
             "field_name": "custom_field_values",
             "gcs_folder": "admissions_custom_fields",
-            "file_name_prefix": "admissions_custom_fields_",
+            "file_name_prefix": "admissions_custom_fields",
             "fields": {
                 "id",
                 "custom_field_id",
@@ -179,7 +179,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "followings",
         "gcs_folder": "followings",
-        "file_name_prefix": "following_",
+        "file_name_prefix": "following",
         "has_university_id": True,
         "date_filter": True,
         "has_grad_year": True,
@@ -205,7 +205,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "universities",
         "gcs_folder": "universities",
-        "file_name_prefix": "university_",
+        "file_name_prefix": "university",
         "has_university_id": False,
         "date_filter": False,
         "has_grad_year": False,
@@ -222,7 +222,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
     {
         "name": "custom_fields",
         "gcs_folder": "custom_fields",
-        "file_name_prefix": "custom_field_",
+        "file_name_prefix": "custom_field",
         "has_university_id": False,
         "date_filter": True,
         "has_grad_year": False,
@@ -242,7 +242,7 @@ OVERGRAD_ENDPOINT_CONFIGS = [
         "custom_field": {
             "field_name": "custom_field_options",
             "gcs_folder": "custom_field_options",
-            "file_name_prefix": "custom_field_option_",
+            "file_name_prefix": "custom_field_option",
             "fields": [
                 "custom_field_id",
                 "id",

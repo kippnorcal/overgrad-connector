@@ -41,8 +41,8 @@ def load_to_cloud_storage(
 
     # Load to Google Cloud Storage
     if grad_year is not None:
-        blob_name = f"overgrad/{endpoint.gcs_folder}/{grad_year}/{endpoint.file_name_prefix}_{record_id}.ndjson"
+        blob_name = f"overgrad/{endpoint.gcs_folder}/{grad_year}/{endpoint.file_name_prefix}__{record_id}.ndjson"
     else:
-        blob_name = f"overgrad/{endpoint.gcs_folder}/{endpoint.file_name_prefix}_{record_id}.ndjson"
+        blob_name = f"overgrad/{endpoint.gcs_folder}/{endpoint.file_name_prefix}__{record_id}.ndjson"
     bucket = os.getenv("BUCKET")
     cloud_storage.load_in_memory_file_to_cloud(bucket, blob_name, file_obj)
